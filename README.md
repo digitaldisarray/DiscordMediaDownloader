@@ -11,5 +11,6 @@ Great for archiving memes
 ## Bot usage (optional)
 - Use the discord developer portal to create a new application, and then add a bot to it.
 - Generate a OAuth2 URL in the developer portal with permissions to read messages, manage messages, view channels, and view message history.
+- Add your bots token to bot.py
 - Make sure you have discord.py installed and then run the bot with "python bot.py"
 - In a given channel, type "-remove " followed by a list of message ids seperated by any sort of character.
