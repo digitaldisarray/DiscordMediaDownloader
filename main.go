@@ -37,7 +37,13 @@ func main() {
 	// Unmarshal byte array into Messages object
 	var messages Messages
 	json.Unmarshal(byteValue, &messages)
-
+	
+	// Make sure a downloads folder exists
+	err = os.Mkdir("downloads", 0755)
+    if err != nil {
+        log.Fatal(err)
+    }
+	
 	// Extract data from parsed json
 	for _, message := range messages.Messages {
 		if message.Content == "" && message.Attachments != nil {
