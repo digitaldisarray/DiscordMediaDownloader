@@ -39,12 +39,10 @@ func main() {
 	json.Unmarshal(byteValue, &messages)
 	
 	// Make sure a downloads folder exists
-	err = os.Mkdir("downloads", 0755)
-    if err != nil {
-        log.Fatal(err)
-    }
+	_ = os.Mkdir("downloads", 0755)
 	
 	// Extract data from parsed json
+	var messageIds = ""
 	for _, message := range messages.Messages {
 		if message.Content == "" && message.Attachments != nil {
 			for _, attachment := range message.Attachments {
@@ -57,6 +55,7 @@ func main() {
 
 				fmt.Println("Downloading (attach) : " + url)
 				DownloadFile("downloads\\"+name, url)
+				messageIds += "," + message.Id
 			}
 		} else if strings.HasPrefix(message.Content, "http") {
 			url := ExtractUrl(message.Content)
@@ -68,9 +67,10 @@ func main() {
 
 			fmt.Println("Downloading (url msg): " + url)
 			DownloadFile("downloads\\"+name, url)
+			messageIds += "," + message.Id
 		}
 	}
-
+	fmt.Println("Deleted Messages: " + messageIds)
 }
 
 func IsMediaFile(name string) bool {
