@@ -26,7 +26,6 @@ type Attachment struct {
 }
 
 func main() {
-
 	// Read messages.json into byte array
 	jsonFile, err := os.Open("messages.json")
 	if err != nil {
@@ -74,11 +73,7 @@ func main() {
 }
 
 func IsMediaFile(name string) bool {
-	if strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg") || strings.HasSuffix(name, ".gif") || strings.HasSuffix(name, ".mp4") || strings.HasSuffix(name, ".webm") {
-		return true
-	}
-
-	return false
+	return (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg") || strings.HasSuffix(name, ".gif") || strings.HasSuffix(name, ".mp4") || strings.HasSuffix(name, ".webm"))
 }
 
 func ExtractFileName(url string) string {
@@ -103,8 +98,6 @@ func DownloadFile(filepath string, url string) error {
 	_, err = os.Stat(filepath)
 	coutner := 1
 	for !os.IsNotExist(err) {
-		// File exists
-
 		// Add counter
 		index := strings.LastIndex(filepath, ".")
 		filepath = filepath[:index] + fmt.Sprintf("_%d", coutner) + filepath[index:]
