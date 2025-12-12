@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -30,50 +30,67 @@ func main() {
 	jsonFile, err := os.Open("messages.json")
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	defer jsonFile.Close()
+
+	byteValue, _ := io.ReadAll(jsonFile)
 
 	// Unmarshal byte array into Messages object
 	var messages Messages
 	json.Unmarshal(byteValue, &messages)
-	
-	// Make sure a downloads folder exists
-	_ = os.Mkdir("downloads", 0755)
-	
-	// Extract data from parsed json
-	var messageIds = ""
+
+	// Get absolute downloads directory path
+	downloadsDir := "downloads"
+	err = os.MkdirAll(downloadsDir, 0755)
+	if err != nil {
+		fmt.Println("Error creating downloads directory:", err)
+		return
+	}
+
+	// Extract data from parsed JSON
+	var messageIds []string
 	for _, message := range messages.Messages {
-		if message.Content == "" && message.Attachments != nil {
+		if message.Content == "" && len(message.Attachments) > 0 {
 			for _, attachment := range message.Attachments {
 				url := attachment.Url
 				name := attachment.FileName
 				if !IsMediaFile(name) {
-					fmt.Println("Rejecting URL: " + url)
+					fmt.Println("Rejecting URL:", url)
 					continue
 				}
 
-				fmt.Println("Downloading (attach) : " + url)
-				DownloadFile("downloads\\"+name, url)
-				messageIds += "," + message.Id
+				fmt.Println("Downloading (attach):", url)
+				safePath := GetUniqueFilePath(filepath.Join(downloadsDir, name))
+				DownloadFile(safePath, url)
+				messageIds = append(messageIds, message.Id)
 			}
 		} else if strings.HasPrefix(message.Content, "http") {
 			url := ExtractUrl(message.Content)
 			name := ExtractFileName(url)
 			if !IsMediaFile(name) {
-				fmt.Println("Rejecting URL: " + url)
+				fmt.Println("Rejecting URL:", url)
 				continue
 			}
 
-			fmt.Println("Downloading (url msg): " + url)
-			DownloadFile("downloads\\"+name, url)
-			messageIds += "," + message.Id
+			fmt.Println("Downloading (url msg):", url)
+			safePath := GetUniqueFilePath(filepath.Join(downloadsDir, name))
+			DownloadFile(safePath, url)
+			messageIds = append(messageIds, message.Id)
 		}
 	}
-	fmt.Println("Deleted Messages: " + messageIds)
+
+	fmt.Println("Deleted Messages:", strings.Join(messageIds, ","))
 }
 
 func IsMediaFile(name string) bool {
-	return (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg") || strings.HasSuffix(name, ".gif") || strings.HasSuffix(name, ".mp4") || strings.HasSuffix(name, ".webm"))
+	extensions := []string{".png", ".jpg", ".jpeg", ".gif", ".mp4", ".webm"}
+	for _, ext := range extensions {
+		if strings.HasSuffix(name, ext) {
+			return true
+		}
+	}
+	return false
 }
 
 func ExtractFileName(url string) string {
@@ -86,6 +103,24 @@ func ExtractUrl(content string) string {
 	return questionRemoved
 }
 
+func GetUniqueFilePath(filepath string) string {
+	ext := filepath[strings.LastIndex(filepath, "."):]
+	base := filepath[:strings.LastIndex(filepath, ".")]
+
+	counter := 1
+	newPath := filepath
+
+	for {
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			break
+		}
+		newPath = fmt.Sprintf("%s_%d%s", base, counter, ext)
+		counter++
+	}
+
+	return newPath
+}
+
 func DownloadFile(filepath string, url string) error {
 	// Get data
 	resp, err := http.Get(url)
@@ -93,18 +128,6 @@ func DownloadFile(filepath string, url string) error {
 		return err
 	}
 	defer resp.Body.Close()
-
-	// If file already exists
-	_, err = os.Stat(filepath)
-	coutner := 1
-	for !os.IsNotExist(err) {
-		// Add counter
-		index := strings.LastIndex(filepath, ".")
-		filepath = filepath[:index] + fmt.Sprintf("_%d", coutner) + filepath[index:]
-
-		// Check with new name
-		_, err = os.Stat(filepath)
-	}
 
 	// Create the file
 	out, err := os.Create(filepath)
